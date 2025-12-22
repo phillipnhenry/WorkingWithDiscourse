@@ -16,10 +16,10 @@
 				"s3:PutBucketCORS"
 			],
 			"Resource": [
-				"arn:aws:s3:::websystems360-sandbox-uploads",
-				"arn:aws:s3:::websystems360-sandbox-uploads/*",
-				"arn:aws:s3:::websystems360-sandbox-backups",
-				"arn:aws:s3:::websystems360-sandbox-backups/*"
+				"arn:aws:s3:::cdn-your-bucket-name-uploads",
+				"arn:aws:s3:::cdn-your-bucket-name-uploads/*",
+				"arn:aws:s3:::s3-your-bucket-name-backups",
+				"arn:aws:s3:::s3-your-bucket-name-backups/*"
 			]
 		},
 		{
