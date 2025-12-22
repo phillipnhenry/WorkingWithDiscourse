@@ -1,0 +1,125 @@
+Make these your own
+  IAM user: websystems360-sandbox
+  Policy: s3-discourse-policy-websystems360-sandbox
+  Uploads bucket: websystems360-sandbox-uploads
+  Backups bucket: websystems360-sandbox-backups
+  Distribution CDNs: cdn-websystems360-sandbox and  s3-websystems360-sandbox-uploads
+
+Discourse instance domain, IAM User, policy name, backups bucket name, uploads bucket name
+  Discourse instance domain: sandbox.websystems360.com
+  IAM User: websystems360-sandbox
+  Policy for IAM user: s3-discourse-policy-websystems360-sandbox
+  Buckets
+    websystems360-sandbox-backups
+    websystems360-sandbox-uploads     Don't forget to set "Everyone (public access)" to "Read" in Bucket>Permissions: Access control list-(ACL) Access control list (ACL)-Grantee.
+
+Distribution #1
+  DISCOURSE_CDN_URL
+    Distribution name: cdn-websystems360-sandbox
+    Origin: sandbox.websystems360.com
+    Distribution domain name (Cloudfront URL):   dqz0vziq4prj3.cloudfront.net
+    Alternate domain names: discourse-cdn.websystems360.com
+
+Distribution #2
+  DISCOURSE_S3_CDN_URL
+    Distribution name: s3-websystems360-sandbox-uploads
+    Origin: websystems360-sandbox-uploads
+    Distribution domain name (Cloudfront URL): d3dq4zjnd9e3t0.cloudfront.net
+    Alternate domain names: s3-cdn.websystems360.com
+
+
+Discourse Configuration
+
+Visit your admin UI at https://discourseinstance.yourdomain.com/admin/site_settings/category/all_results?filter=S3
+      Enable "S3 use CDN URL for all uploads by selecting "Use CDN URL for all the files uploaded to s3 instead of only for images." (Ships deselected)
+      
+Edit your app.yml making the changes below, branded URLs or unbranded Cloudfront URLs.
+
+Use this for unbranded Cloudfront distributions. Your DISCOURSE_S3_REGION might be different.
+DISCOURSE_CDN_URL: https://dqz0vziq4prj3.cloudfront.net
+
+## S3 storage config
+  DISCOURSE_USE_S3: true
+  DISCOURSE_S3_REGION: us-east-1
+  DISCOURSE_S3_ACCESS_KEY_ID: obfuscated
+  DISCOURSE_S3_SECRET_ACCESS_KEY: obfuscated
+  DISCOURSE_S3_CDN_URL: https://d3dq4zjnd9e3t0.cloudfront.net
+  DISCOURSE_S3_BUCKET: websystems360-sandbox-uploads
+  DISCOURSE_S3_BACKUP_BUCKET: websystems360-sandbox-backups
+  DISCOURSE_BACKUP_LOCATION: s3
+
+If you prefer to use yourdomain.com based URLs for the CDNs you need to make some DNS changes and adjust your CDN URLs.
+Don't forget to add discourse-cdn.yourdomain.com and s3-cdn.yourdomain.com as a domain name in "Alternate domain names" for their respective Cloudfront distributions.
+
+DISCOURSE_CDN_URL
+already set  A   sandbox.websystems360.com   46.62.211.254  This is the Discourse app
+  New record: A   discourse-cdn-cloudfront.websystems360.com   46.62.211.254
+  New record: CNAME discourse-cdn.websystems360.com     dqz0vziq4prj3.cloudfront.net
+
+DISCOURSE_S3_CDN_URL
+  New record: CNAME s3-cdn-cloudfront.websystems360.com  d3dq4zjnd9e3t0.cloudfront.net
+  New record: CNAME  s3-cdn.websystems360.com     s3-cdn-cloudfront.websystems360.com
+
+Once the DNS changes are complete you can edit your app.yml making the changes below.
+
+Change DISCOURSE_CDN_URL and/or DISCOURSE_S3_CDN_URL if you are using domain CNAMES for the Cloudfront distribution (amazonassigned.cloudfront.net).
+
+DISCOURSE_CDN_URL: https://discourse-cdn.websystems360.com      CNAME  -->>    dqz0vziq4prj3.cloudfront.net
+
+## S3 storage config
+  DISCOURSE_USE_S3: true
+  DISCOURSE_S3_REGION: us-east-1
+  DISCOURSE_S3_ACCESS_KEY_ID: obfuscated
+  DISCOURSE_S3_SECRET_ACCESS_KEY: obfuscated
+  DISCOURSE_S3_CDN_URL: https://s3-cdn.websystems360.com   CNAME  -->>    s3-cdn-cloudfront.websystems360.com
+  DISCOURSE_S3_BUCKET: websystems360-sandbox-uploads
+  DISCOURSE_S3_BACKUP_BUCKET: websystems360-sandbox-backups
+  DISCOURSE_BACKUP_LOCATION: s3
+
+Additional app.yml edits
+Regardless of which approach you use, branded or Cloudfront URLs, you will need the after_assets_precompile section below to ensure things stay updated during subsequent rebuilds.
+hooks:
+  after_code:
+    - exec:
+        cd: $home/plugins
+        cmd:
+          - git clone https://github.com/discourse/docker_manager.git
+          -you may have more plugins
+  after_assets_precompile:
+    - exec:
+        cd: $home
+        cmd:
+          - sudo -E -u discourse bundle exec rake s3:upload_assets
+          - sudo -E -u discourse bundle exec rake s3:expire_missing_assets
+
+Rebuild your instance with  ./launcher rebuild app
+
+After ./launcher rebuild app completes successfully do these rakes.
+
+./launcher enter app
+
+rake posts:rebake
+rake uploads:migrate_to_s3
+rake posts:rebake_uncooked_posts
+
+rake s3:upload_assets
+rake s3:expire_missing_assets
+
+
+If the rakes complete without errors then you are good to go. Move onto configuring Lifecycle rules for your-bucket-name-backups.
+
+On some sites the initial rebuild will fail with an error relating to s3:upload_assets. If this happens comment out or remove
+
+  after_assets_precompile:
+      - exec:
+          cd: $home
+          cmd:
+            - sudo -E -u discourse bundle exec rake s3:upload_assets
+            - sudo -E -u discourse bundle exec rake s3:expire_missing_assets
+
+... and run ./launcher rebuild app again. Then run "rake s3:upload_assets" and "rake s3:expire_missing_assets".
+
+If both of the rakes complete without errors then re-add or uncomment the after_assets_precompile section, rebuild again and do the all the rakes listed above.
+If either of the rakes give an error or the rebuild fails again you have something wrong in your app.yml, AWS S3 configs and/or DNS records. Happy hunting! :)
+
+
