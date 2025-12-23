@@ -3,7 +3,7 @@ Make these your own
   Policy: s3-discourse-policy-websystems360-sandbox
   Uploads bucket: websystems360-sandbox-uploads
   Backups bucket: websystems360-sandbox-backups
-  Distribution CDNs: cdn-websystems360-sandbox and  s3-websystems360-sandbox-uploads
+  Distribution CDNs: discourse-cdn.websystems360.com and  s3-cdn.websystems360.com
 
 AWS S3 Configuration
   Discourse instance domain: sandbox.websystems360.com (subdomain.yourdomain.tld including www.yourdomain.tld)
@@ -11,7 +11,7 @@ AWS S3 Configuration
   Policy for IAM user: s3-discourse-policy-websystems360-sandbox
   Uploads bucket: websystems360-sandbox-uploads Note: Don't forget to set "Everyone (public access)" to "Read" in Bucket>Permissions: Access control list-(ACL) Access control list (ACL)-Grantee.
   Backups bucket: websystems360-sandbox-backups
-  Distribution CDNs: cdn-yourdomain-subdomain and s3-yourdomain-subdomain-uploads
+  Distribution CDNs: discourse-cdn.websystems360.com and s3-cdn.websystems360.com
 
 IAM User
 S3 Policy
@@ -128,5 +128,3 @@ after_assets_precompile section:
 
 If both of the rakes complete without errors then re-add or uncomment the after_assets_precompile section, rebuild again and do the all the rakes listed above.
 If either of the rakes give an error or the rebuild fails again you have something wrong in your app.yml, AWS S3 configs and/or DNS records. Happy hunting! :)
-
-
