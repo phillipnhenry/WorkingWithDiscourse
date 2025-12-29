@@ -1,0 +1,348 @@
+So you want to use AWS S3 for storage, CDN and… The following serves me well when setting up a new site on S3. Hopefully it will be useful to you as well. Please let me know if something needs an adjustment or does not make sense.
+
+[Getting Started](#heading--getting-started)
+[Naming Strategy](#naming-strategy)
+
+[AWS Configuration](#aws-configuration)
+* [IAM Users](#iam-users)
+* [Policies](#policies)
+* [Amazon S3 Buckets](#s3-buckets)
+  * [Create the backups bucket](#create-backups-bucket)
+  * [Lifecycle rules configuration](#lifecycle-rules-config)
+  * [Create the uploads bucket](#create-uploads-bucket)
+* [CloudFront Distributions](#cloudFront-distributions)
+
+[Discourse Configuration](#discourse-configuration)
+
+* [Edit Config (app.yml) Unbranded URLs](#edit-config-unbranded)
+* [Discourse Unbranded URLs](#discourse-unbranded-urls)
+* [Discourse Branded URLs](#discourse-branded-urls)
+* [Edit Config (app.yml) Branded URLs](#edit-config-branded)
+* [Additional Config Edits (app.yml)](#additional-config-edits)
+
+[FAQ](#faq)
+[Resources](#resources)
+[To-Do](#todo)
+
+## [Getting Started](#heading--getting-started)
+
+You will need:
+1. A self hosted Discourse instance with app.yml access. If you are hosted by one of the [commercial hosts] (http://needlink) they are probably managing your backups and CDNs.
+2. AWS account
+3. ???
+
+
+## [Naming Strategy](#naming-strategy)
+
+There are many places to make mistakes. Using a naming convention strategy that makes sense to you and perhaps others will help you with troubleshooting especially if you are configuring multiple Discourse instances.
+
+* IAM user: your-iam-user
+* Policy: s3-discourse-policy-your-iam-user
+* Backups bucket: yourdomain-subdomain-backups
+* Uploads bucket: yourdomain-subdomain-uploads
+* Distribution CDNs: cdn-yourdomain-subdomain and  s3-yourdomain-subdomain-uploads
+
+Optional: Configuration process bucket: a-origin-config-bucket
+
+## [AWS Configuration](#aws-configuration)
+
+Use the default settings in the AWS configuration pages unless instructed to do otherwise.
+
+## [S3 Names, names, names](#s3-names)
+
+* Discourse instance domain: subdomain.yourdomain.tld (subdomain.yourdomain.tld including www.yourdomain.tld)
+* IAM user: yourdomain-subdomain (yourdomain-discourse, yourdomain-forum or Discourse in apex/root: yourdomain-tld-www )
+* Policy for IAM user: s3-discourse-policy-yourdomain-subdomain
+* Uploads bucket: yourdomain-subdomain-uploads Note: Don’t forget to set “Everyone (public access)” to “Read” in Bucket>Permissions: Access control list-(ACL) Access control list (ACL)-Grantee.
+* Backups bucket: yourdomain-subdomain-backups
+* Distribution CDNs: cdn-yourdomain-subdomain and s3-yourdomain-subdomain-uploads
+* Configuration process bucket: a-origin-config-bucket
+
+You can see how this strategy works in a real world example:
+
+* (Sandbox) [Guide_AWS_S3_Config-sandbox.websystems360.txt](https://github.com/phillipnhenry/WorkingWithDiscourse/blob/main/Sandbox/Guide_AWS_S3_Config-sandbox.websystems360.txt)
+* (Sandbox) [s3-discourse-policy-websystems360-sandbox.txt](https://github.com/phillipnhenry/WorkingWithDiscourse/blob/main/Sandbox/s3-discourse-policy-websystems360-sandbox.txt)
+
+## [IAM Users](#iam-users)
+
+1. Go to IAM > Users > Select "Create user" https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/users/create
+2. IAM > Users > Create user > Specify user details > User details > User name > Enter name i.e. your-iam-user > Select "Next"
+4. IAM > Users > Create user > Set permissions > Permissions options > Select "Attach policies directly" > Select "Create policy" > Opens Create policy page (Alternatively the policy can be created first in Policies then selected when creating the user in "Permissions policies".)
+5. IAM > Users > Create user > Set permissions > Permissions policies > Filter by Type dropdown selector > Select "Customer managed" > Select the newly created policy > Select "Next" > Select "Create user"
+6. IAM > Users > your-iam-user > Security credentials > Access keys > Select "Create access key"
+7. IAM > Users > your-iam-user > Create access key > Access key best practices & alternatives > Select "Other" > Select "Next"
+8. IAM > Users > your-iam-user > Create access key > Set description tag > Select "Create access key"
+9. IAM > Users > your-iam-user > Create access key > Retrieve access keys > Safely save Access key and Secret access key for use in Discourse app.yml > Select "Done"
+
+## [Policies](#policies)
+1. Modify [s3-discourse-policy-your-iam-user.txt](https://github.com/WebSystems360/WorkingWithDiscourse/blob/main/AWS-S3/s3-discourse-policy-your-iam-user.txt)  with your IAM user name and bucket names.
+2. Go to IAM > Policies > [Create policy](https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/policies/create)
+3. IAM > Policies > Create policy > Specify permissions > Policy editor > Select "JSON" in Policy editor > Copy policy from s3-discourse-policy-your-iam-user.txt and paste into JSON editor copying over existing JSON > Select "Next"
+4. IAM > Policies > Create policy > Review and create > Policy details > Policy name > Enter Policy name i.e. s3-discourse-policy-your-iam-user > Select "Next"
+5. Go to IAM Users : 4. IAM > Users > Create user to continue the create user process
+
+## [Amazon S3 Buckets](#s3-buckets)
+
+Create and configure the backups bucket, uploads bucket, and the optional but useful configuration process bucket.
+
+### [Create the backups bucket](#create-backups-bucket) `yourdomain-subdomain-backups`
+
+1. Go to Amazon S3 [Buckets](https://us-east-1.console.aws.amazon.com/s3/buckets?region=us-east-1) > Select “[Create bucket](https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1)”
+2. Amazon S3 > Buckets > Create bucket > General configuration > Confirm “General Purpose” selection
+3. Amazon S3 > Buckets > Create bucket > General configuration > Bucket name > Enter backups bucket name i.e. yourdomain-subdomain-backups
+4. Amazon S3 > Buckets > Create bucket > General configuration > Confirm “ACLs disabled (recommended)” selection
+5. Amazon S3 > Buckets > Create bucket > Block Public Access settings for this bucket > Deselect “Block all public access” then Select “Block public access to buckets and objects granted through new public bucket or access point policies” and “Block public and cross-account access to buckets and objects through any public bucket or access point policies”
+6. Amazon S3 > Buckets > Create bucket > Block Public Access settings for this bucket > Turning off block all public access might result in this bucket and the objects within becoming public > Select “I acknowledge that the current settings might result in this bucket and the objects within becoming public.”
+7. Amazon S3 > Buckets > Create bucket > Bucket Versioning > Bucket Versioning > Select “Enable” Bucket Versioning is required for “Lifecycle rules”
+8. Amazon S3 > Buckets > Create bucket > Select “Create bucket”
+
+### [Lifecycle rules configuration](#lifecycle-rules-config)
+**Backup Retention Rule**
+1. Amazon S3 > Buckets > Select newly created bucket i.e. yourdomain-subdomain-backups
+2. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Select "Create lifecycle rule"
+3. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Lifecycle rule name > Enter rule name i.e. backup retention
+4. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Choose a rule scope > Select "Apply to all objects in the bucket"
+5. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Choose a rule scope > Apply to all objects in the bucket > Select "I acknowledge that this rule will apply to all objects in the bucket."
+6. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Lifecycle rule actions > Select "Transition noncurrent versions of objects between storage classes", "Expire current versions of objects", and "Permanently delete noncurrent versions of objects"
+7. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Lifecycle rule actions > Transitions are charged per request > Select "I acknowledge that this lifecycle rule will incur a transition cost per request."
+8. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Transition noncurrent versions of objects between storage classes > Choose storage class transitions > Select "Glacier Instant Retrieval"
+10. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Transition noncurrent versions of objects between storage classes > Days after objects become noncurrent > Enter "1"
+11. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Expire current versions of objects > Days after object creation > Enter "7" or 15 or 30 or ??? ***See FAQ or discussion***
+12. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Permanently delete noncurrent versions of objects > Days after objects become noncurrent > Enter "91"
+13. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Confirm "Review transition and expiration actions" is correct > Select "Create rule"
+
+**Cleanup Rule**
+1. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Select "Create lifecycle rule"
+2. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Lifecycle rule name > Enter rule name cleanup
+3. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Choose a rule scope > Select "Apply to all objects in the bucket"
+4. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Choose a rule scope > Apply to all objects in the bucket > Select "I acknowledge that this rule will apply to all objects in the bucket."
+5. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Lifecycle rule actions > Select "Permanently delete noncurrent versions of objects" and "Delete expired object delete markers or incomplete multipart uploads"
+6. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Permanently delete noncurrent versions of objects > Days after objects become noncurrent > Enter "92"
+7. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Permanently delete noncurrent versions of objects > Delete expired object delete markers or incomplete multipart uploads > Expired object delete markers > Select "Delete expired object delete markers"
+8. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Permanently delete noncurrent versions of objects > Delete expired object delete markers or incomplete multipart uploads > Incomplete multipart uploads > Select "Delete incomplete multipart uploads"
+9. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Permanently delete noncurrent versions of objects > Delete expired object delete markers or incomplete multipart uploads > Incomplete multipart uploads > Delete incomplete multipart uploads > Number of days > Enter "3" or ???
+10. Amazon S3 > Buckets > yourdomain-subdomain-backups > Management > Lifecycle configuration > Confirm "Review transition and expiration actions" is correct > Select "Create rule"
+
+### [Create the uploads bucket](#create-uploads-bucket) `yourdomain-subdomain-uploads`
+
+1. Go to Amazon S3 > [Buckets](https://us-east-1.console.aws.amazon.com/s3/buckets?region=us-east-1) > Select “[Create bucket](https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1)”
+2. Amazon S3 > Buckets > Create bucket > General configuration > Confirm “General Purpose” selection
+3. Amazon S3 > Buckets > Create bucket > General configuration > Bucket name > Enter uploads bucket name i.e. yourdomain-subdomain-uploads
+4. Amazon S3 > Buckets > Create bucket > General configuration Select “ACLs enabled”
+5. Amazon S3 > Buckets > Create bucket > Block Public Access settings for this bucket > Deselect “Block all public access” then Select “Block public access to buckets and objects granted through new public bucket or access point policies” and “Block public and cross-account access to buckets and objects through any public bucket or access point policies”
+6. Amazon S3 > Buckets > Create bucket > Block Public Access settings for this bucket > Turning off block all public access might result in this bucket and the objects within becoming public > Select “I acknowledge that the current settings might result in this bucket and the objects within becoming public.”
+7. Amazon S3 > Buckets > Create bucket > Select “Create bucket”
+8. Amazon S3 > Buckets > Buckets screen > Select newly created bucket i.e. yourdomain-subdomain-uploads
+**Return to do step 9 after creating Distribution #2**
+9. Amazon S3 > Buckets > yourdomain-subdomain-uploads > Permissions > Bucket policy > Select Edit > Paste JSON from “”““copied from add something here””“” > Select “Save changes”
+10. Amazon S3 > Buckets > yourdomain-subdomain-uploads > Permissions > Access control list (ACL) > Select Edit > Everyone (public access) > Select “Read” >  When you grant access to the Everyone or Authenticated users group grantees, anyone in the world can access the objects in this bucket. Select “I understand the effects of these changes on my objects and buckets.” > Select “Save changes”
+
+### [Create a configuration process bucket](#create-config-process-bucket) `a-origin-config-bucket`
+Create a bucket to be used during Distribution #1 configuration process. Name and configuration are unimportant since the bucket is only used temporarily as an initial origin which will be deleted during the configuration process.
+1. Go to Amazon S3 > [Buckets](https://us-east-1.console.aws.amazon.com/s3/buckets?region=us-east-1) > Select “[Create bucket](https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1)”
+2. Amazon S3 > Buckets > Create bucket > General configuration > Confirm “General Purpose” selection
+3. Amazon S3 > Buckets > Create bucket > General configuration > Bucket name > Enter uploads bucket name i.e. a-origin-config-bucket
+4. Toggle through the configuration pages and “Create bucket”
+
+## [CloudFront Distributions](#cloudFront-distributions)
+
+Create two AWS S3 Cloudfront distributions. One to serve website assets and the second to serve uploads bucket assets.
+
+**Create distribution #1**
+
+```
+  Distribution #1
+    DISCOURSE_CDN_URL
+      Distribution name: cdn-yourdomain-subdomain
+      Origin: subdomain.yourdomain.tld
+      Distribution domain name (Cloudfront URL): AWS-assigned.cloudfront.net
+      Alternate domain names: discourse-cdn.yourdomain.tld
+```
+
+1. Go to CloudFront > [Distributions](https://us-east-1.console.aws.amazon.com/cloudfront/v4/home?region=us-east-1#/distributions) >  Select "[Create](https://us-east-1.console.aws.amazon.com/cloudfront/v4/home?region=us-east-1#/distributions/create)"
+2. CloudFront > Distributions > Create distribution > Choose a plan > Select "Pay as you go" > Select "Next"
+3. CloudFront > Distributions > Create distribution > Get started > Distribution options > Distribution name > Enter distribution name i.e. cdn-yourdomain-subdomain
+4. CloudFront > Distributions > Create distribution > Get started > Distribution options > Description - optional > Enter "cdn-yourdomain-subdomain" (Optional but helps with visibilty)
+5. CloudFront > Distributions > Create distribution > Get started > Distribution options > Distribution type > Confirm "Single website or app" selection > Select "Next"
+6. CloudFront > Distributions > Create distribution > Specify origin > Origin type > Confirm "Amazon S3" selection
+7. CloudFront > Distributions > Create distribution > Specify origin > Origin > S3 origin > Select "Browse S3" > Select the configuration process bucket "a-origin-config-bucket" > Select "Choose" > Select "Next"
+8. CloudFront > Distributions > Create distribution > Enable security > make your choices - for this guide > Select "Do not enable security protections" > Select "Next"
+9. CloudFront > Distributions > Create distribution > Review and create > Confirm "Review and create: is correct > Select "Create distribution" -> Newly created distribution information page should open in CloudFront > Distributions > Distribution ID
+10. Info: The distribution requires the Discourse instance domain as the origin!
+11. CloudFront > Distributions > Distribution ID > Origins > Select "Create origin" Info: The distribution requires the Discourse instance domain as the origin!
+12. CloudFront > Distributions > Distribution ID > Create origin > Settings > Origin domain > Enter discourse instance domain i.e. subdomain.yourdomain.tld > Select "Create origin"
+14. CloudFront > Distributions > Distribution ID > Behaviors > Select the lone behavior "Default (*)" > Select "Edit"
+15. CloudFront > Distributions > Distribution ID > Behaviors > Edit behavior > Settings > Origin and origin groups > Select the Custom origin "subdomain.yourdomain.tld" > Select "Save changes"
+16. CloudFront > Distributions > Distribution ID > Origins > Select the original origin (a-origin-config-bucket.s3.us-east-1.amazonaws.com" > Select "Delete" Info: The deployment nust be complete. See CloudFront > Distributions > Distribution ID > Details > Last modified
+17. If using a branded CDN URL
+18. CloudFront > Distributions > Distribution ID > Alternate domain names > Select "Add domain"
+19. CloudFront > Distributions > Distribution ID > Alternate domain names > Add domain > Configure domains > Domains > Domains to serve > Enter the DISCOURSE_CDN_URL i.e. discourse-cdn.yourdomain.tld > Select "Next"
+
+> Incomplete: Alternate domain names: discourse-cdn.yourdomain.tld
+ 
+**Create distribution #2**
+
+```
+  Distribution #2
+    DISCOURSE_S3_CDN_URL
+      Distribution name: s3-yourdomain-subdomain-uploads
+      Origin: yourdomain-subdomain-uploads
+      Distribution domain name (Cloudfront URL: AWS-assigned.cloudfront.net
+      Alternate domain names: s3-cdn.yourdomain.tld
+```
+1. CloudFront > Distributions > [Create distribution](https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1)
+2. CloudFront > Distributions > Create distribution > Choose a plan > Select "Pay as you go" > Select "Next"
+3. CloudFront > Distributions > Create distribution > Get started > Distribution options > Distribution name > Enter distribution name i.e. s3-yourdomain-subdomain-uploads
+4. CloudFront > Distributions > Create distribution > Get started > Distribution options > Description - optional > Enter "s3-yourdomain-subdomain-uploads" (Optional but helps with visibilty)
+5. CloudFront > Distributions > Create distribution > Get started > Distribution options > Distribution type > Confirm "Single website or app" selection > Select "Next"
+6. CloudFront > Distributions > Create distribution > Specify origin > Origin type > Confirm "Amazon S3" selection
+7. CloudFront > Distributions > Create distribution > Specify origin > Origin > S3 origin > Select "Browse S3" > Select the uploads bucket "yourdomain-subdomain-uploads" > Select "Choose" > Select "Next"
+8. CloudFront > Distributions > Create distribution > Enable security > make your choices - for this guide > Select "Do not enable security protections" > Select "Next"
+9. CloudFront > Distributions > Create distribution > Review and create > Confirm "Review and create: is correct > Select "Create distribution" -> Newly created distribution information page should open in CloudFront > Distributions > Distribution ID
+
+> Incomplete: Alternate domain names: s3-cdn.yourdomain.tld
+
+## [Discourse Configuration](#discourse-configuration)
+
+Make these changes in Discourse [Admin UI](https://discourseinstance.yourdomain.com/admin/)
+
+**Backups Settings**  /admin/backups/settings
+1. Maximum backups > Enter the number of backups to keep locally
+2. Backup with uploads > Select "Include uploads in scheduled backups. Disabling this will only backup the database."
+
+**S3 Settings** /admin/site_settings/category/all_results?filter=S3
+1. S3 use CDN URL for all uploads > Select “Use CDN URL for all the files uploaded to s3 instead of only for images.” (Discourse ships deselected)
+
+### [Edit Config (app.yml) Unbranded URLs](#edit-config-unbranded)
+
+Edit the app.yml making the changes below for branded URLs or unbranded Cloudfront URLs.
+
+### [Discourse Unbranded URLs](#discourse-unbranded-urls)
+
+Use this for unbranded Cloudfront distributions. Your DISCOURSE_S3_REGION might be different.
+DISCOURSE_CDN_URL: https://amazonassigned.cloudfront.net
+
+**S3 storage config (unbranded)**
+
+```
+## S3 storage config
+DISCOURSE_USE_S3: true
+DISCOURSE_S3_REGION:  us-east-1
+DISCOURSE_S3_ACCESS_KEY_ID: key obfuscated
+DISCOURSE_S3_SECRET_ACCESS_KEY: key obfuscated
+DISCOURSE_S3_CDN_URL: https://amazonassigned.cloudfront.net
+DISCOURSE_S3_BUCKET: your-bucket-name-uploads
+DISCOURSE_S3_BACKUP_BUCKET: your-bucket-name-backups
+DISCOURSE_BACKUP_LOCATION: s3
+```
+
+### [Discourse Branded URLs](#discourse-branded-urls)
+
+**DNS Configuration**
+
+If you prefer to use yourdomain.com based URLs for the CDNs you need to make some DNS changes and adjust your CDN URLs.
+
+**Note:** Don’t forget to add discourse-cdn.yourdomain.com and s3-cdn.yourdomain.com as a domain name in “Alternate domain names” for their respective Cloudfront distributions.
+
+DNS config if you want to use domain branded Cloudfront distributions.
+
+**DISCOURSE_CDN_URL**
+
+```
+Existing record:	A   discourseinstance.yourdomain.com   instance ip  Note: This is the existing Discourse install ip.
+New record:		A   discourse-cdn-cloudfront.yourdomain.com   instance ip
+New record: 		CNAME discourse-cdn.yourdomain.com  -->   amazonassigned.cloudfront.net
+```
+
+**DISCOURSE_S3_CDN_URL**
+
+```
+New record:		CNAME s3-cdn-cloudfront.yourdomain.com  -->   amazonassigned.cloudfront.net
+New record: 	CNAME  s3-cdn.yourdomain.com  -->   s3-cdn-cloudfront.yourdomain.com
+```
+
+## [Edit Config (app.yml) Branded URLs](#edit-config-branded)
+
+Once the DNS changes are complete you can edit your app.yml making the changes below.
+
+Change DISCOURSE_CDN_URL and/or DISCOURSE_S3_CDN_URL if you are using domain CNAMES for the Cloudfront distribution (amazonassigned.cloudfront.net).
+
+DISCOURSE_CDN_URL: https://discourse-cdn.yourdomain.com
+
+## S3 storage config (branded)
+
+```
+## S3 storage config
+DISCOURSE_USE_S3: true
+DISCOURSE_S3_REGION:  us-east-1
+DISCOURSE_S3_ACCESS_KEY_ID: key obfuscated
+DISCOURSE_S3_SECRET_ACCESS_KEY: key obfuscated
+DISCOURSE_S3_CDN_URL: https://s3-cdn.yourdomain.com
+DISCOURSE_S3_BUCKET: your-bucket-name-uploads
+DISCOURSE_S3_BACKUP_BUCKET: your-bucket-name-backups
+DISCOURSE_BACKUP_LOCATION: s3
+```
+
+## [Additional Config Edits (app.yml)](#additional-config-edits)
+
+Regardless of which approach you use, branded or Cloudfront URLs, you will need the after_assets_precompile section below to ensure things stay updated during subsequent rebuilds.
+
+```
+hooks:
+after_code:
+- exec:
+cd: $home/plugins
+cmd:
+- git clone https://github.com/discourse/docker_manager.git
+-you may have more plugins
+after_assets_precompile:
+- exec:
+cd: $home
+cmd:
+- sudo -E -u discourse bundle exec rake s3:upload_assets
+- sudo -E -u discourse bundle exec rake s3:expire_missing_assets
+```
+
+Rebuild your instance with  ./launcher rebuild app
+
+After ./launcher rebuild app completes successfully do these rakes.
+
+```
+./launcher enter app
+
+rake posts:rebake
+rake uploads:migrate_to_s3
+rake posts:rebake_uncooked_posts
+
+rake s3:upload_assets
+rake s3:expire_missing_assets
+```
+
+If the rakes complete without errors then you are good to go. Move onto configuring Lifecycle rules for your-bucket-name-backups.
+
+On some sites the initial rebuild will fail with an error relating to s3:upload_assets. If this happens comment out or remove
+
+after_assets_precompile section:
+
+```
+  after_assets_precompile:
+      - exec:
+          cd: $home
+          cmd:
+            - sudo -E -u discourse bundle exec rake s3:upload_assets
+            - sudo -E -u discourse bundle exec rake s3:expire_missing_assets
+```
+
+and run ./launcher rebuild app again. Then run “rake s3:upload_assets” and “rake s3:expire_missing_assets”.
+
+If both of the rakes complete without errors then re-add or uncomment the after_assets_precompile section, rebuild again and do the all the rakes listed above.
+
+If either of the rakes give an error or the rebuild fails again you have something wrong in your app.yml, AWS S3 configs and/or DNS records. Happy hunting! :slight_smile:
+
+
+## [Resources](#Resources)
+
+* [AWS_S3_Config.txt](https://github.com/phillipnhenry/WorkingWithDiscourse/blob/main/AWS-S3/AWS_S3_Config.txt)
+* [s3-discourse-policy-your-iam-user.txt](https://github.com/phillipnhenry/WorkingWithDiscourse/blob/main/AWS-S3/s3-discourse-policy-your-iam-user.txt)
+* (Sandbox) [Guide_AWS_S3_Config-sandbox.websystems360.txt](https://github.com/phillipnhenry/WorkingWithDiscourse/blob/main/Sandbox/Guide_AWS_S3_Config-sandbox.websystems360.txt)
+* (Sandbox) [s3-discourse-policy-websystems360-sandbox.txt](https://github.com/phillipnhenry/WorkingWithDiscourse/blob/main/Sandbox/s3-discourse-policy-websystems360-sandbox.txt)
