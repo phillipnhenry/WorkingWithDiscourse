@@ -1,35 +1,80 @@
 Make these your own
   IAM user: your-iam-user
   Policy: s3-discourse-policy-your-iam-user
-  Uploads bucket: your-bucket-name-uploads
   Backups bucket: your-bucket-name-backups
+  Uploads bucket: your-bucket-name-uploads
   Distribution CDNs: discourse-cdn.yourdomain.tld and s3-cdn.yourdomain.tld
 
 AWS S3 Configuration
   Discourse instance domain: subdomain.yourdomain.tld (subdomain.yourdomain.tld including www.yourdomain.tld)
   IAM user: yourdomain-subdomain (yourdomain-discourse, yourdomain-forum or Discourse in apex/root: yourdomain-tld-www )
   Policy for IAM user: s3-discourse-policy-yourdomain-subdomain
-  Uploads bucket: yourdomain-subdomain-uploads Note: Don't forget to set "Everyone (public access)" to "Read" in Bucket>Permissions: Access control list-(ACL) Access control list (ACL)-Grantee.
   Backups bucket: yourdomain-subdomain-backups
+  Uploads bucket: yourdomain-subdomain-uploads Note: Don't forget to set "Everyone (public access)" to "Read" in Bucket>Permissions: Access control list-(ACL) Access control list (ACL)-Grantee.
   Distribution CDNs: discourse-cdn.yourdomain.tld and s3-cdn.yourdomain.tld
 
 IAM User
-S3 Policy
+Create user https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/users/create
+       Step 1 Specify user details > User details > User name your-iam-user
+       Step 2 Set permissions > Select "Attach policies directly" > Select "Create policy" > Opens Create policy page
+       Step 2 (cont) In Permissions policies > Filter by Type dropdown selector > Select "Customer managed" > Select your newly created policy > Select "Next" > Select "Create user" 
+
+Policy
+Create policy   (Alternatively the policy can be created first then selected when creating the user.) https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/policies/create
+   Modify s3-discourse-policy-your-iam-user.txt https://github.com/phillipnhenry/WorkingWithDiscourse/blob/main/AWS-S3/s3-discourse-policy-your-iam-user.txt with your IAM user name and bucket names.
+       Step 1 Specify permissions > Select JSON in Policy editor > Copy policy from s3-discourse-policy-your-iam-user.txt and paste into JSON editor > Select "Next"
+       Step 2 Review and create > Policy details > Policy name > Enter Policy name i.e. s3-discourse-policy-your-iam-user > Select Next > Go back to Create user Step 2
+
 S3 Buckets
+Create and configure buckets https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1
 
-Distribution #1
-  DISCOURSE_CDN_URL
-    Distribution name: cdn-yourdomain-subdomain
-    Origin: subdomain.yourdomain.tld
-    Distribution domain name (Cloudfront URL): AWS-assigned.cloudfront.net
-    Alternate domain names: discourse-cdn.yourdomain.tld
+Backups bucket: yourdomain-subdomain-backups
+Uploads bucket: yourdomain-subdomain-uploads
 
-Distribution #2
-  DISCOURSE_S3_CDN_URL
-    Distribution name: s3-yourdomain-subdomain-uploads
-    Origin: yourdomain-subdomain-uploads
-    Distribution domain name (Cloudfront URL: AWS-assigned.cloudfront.net
-    Alternate domain names: s3-cdn.yourdomain.tld
+Create the backups bucket: yourdomain-subdomain-backups
+       Step 1 Create bucket https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1
+       Step 2
+       Step 3
+       Step 4
+       Step 5
+
+Create the uploads bucket: yourdomain-subdomain-uploads
+       Step 1 Create bucket https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1
+       Step 2
+       Step 3
+       Step 4
+       Step 5
+
+S3 Distributions
+
+Create distribution #1
+
+  Distribution #1
+    DISCOURSE_CDN_URL
+      Distribution name: cdn-yourdomain-subdomain
+      Origin: subdomain.yourdomain.tld
+      Distribution domain name (Cloudfront URL): AWS-assigned.cloudfront.net
+      Alternate domain names: discourse-cdn.yourdomain.tld
+
+ Step 1 Create distribution #1 https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1
+ Step 2
+ Step 3
+ Step 4
+ Step 5
+
+Create distribution #2
+  Distribution #2
+    DISCOURSE_S3_CDN_URL
+      Distribution name: s3-yourdomain-subdomain-uploads
+      Origin: yourdomain-subdomain-uploads
+      Distribution domain name (Cloudfront URL: AWS-assigned.cloudfront.net
+      Alternate domain names: s3-cdn.yourdomain.tld
+
+ Step 1 Create distribution #2 https://us-east-1.console.aws.amazon.com/s3/bucket/create?region=us-east-1
+ Step 2
+ Step 3
+ Step 4
+ Step 5
 
 Discourse Configuration
 
