@@ -1,3 +1,7 @@
+
+Update Needed!
+
+
 Make these your own
   IAM user: websystems360-sandbox
   Policy: s3-discourse-policy-websystems360-sandbox
@@ -33,7 +37,7 @@ Distribution #2
 
 Discourse Configuration
 
-Visit your admin UI(https://sandbox.websystems360.com/admin/site_settings/category/all_results?filter=S3) then enable "S3 use CDN URL for all uploads" by selecting ìUse CDN URL for all the files uploaded to s3 instead of only for images.î (Discourse ships deselected)
+Visit your admin UI(https://sandbox.websystems360.com/admin/site_settings/category/all_results?filter=S3) then enable "S3 use CDN URL for all uploads" by selecting ‚ÄúUse CDN URL for all the files uploaded to s3 instead of only for images.‚Äù (Discourse ships deselected)
 
 Edit your app.yml making the changes below for branded URLs or unbranded Cloudfront URLs.
 
@@ -127,4 +131,5 @@ after_assets_precompile section:
 ... and run ./launcher rebuild app again. Then run "rake s3:upload_assets" and "rake s3:expire_missing_assets".
 
 If both of the rakes complete without errors then re-add or uncomment the after_assets_precompile section, rebuild again and do the all the rakes listed above.
+
 If either of the rakes give an error or the rebuild fails again you have something wrong in your app.yml, AWS S3 configs and/or DNS records. Happy hunting! :)
